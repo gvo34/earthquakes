@@ -25,8 +25,8 @@ var layers = {
 // Create map object and set default layers
 var myMap = L.map('map', {
   center: [37.7749, -122.4194],
-  zoom: 5,
-  layers: [light,layers.quakes],   // set initial map tile layer 
+  zoom: 3,
+  layers: [light, layers.quakes],   // set initial map tile layer 
 });
 
 
@@ -70,15 +70,50 @@ function setColor(m){
   
 }
 
+//Get geo json data for tectonicplates
+
+var plates_json = "tectonicplates/PB2002_boundaries.json";
+
+//d3.json(plates_data, function(data){processes will be in here}).addTo(map);
+d3.json(plates_json, function(data) {
+    faults = new L.geoJson(data, {
+      style: function(feature) {
+        return {
+          color: 'white',
+          // Call the chooseColor function to decide which color to color our neighborhood (color based on borough)
+          //fillColor: 'blue',
+          //fillOpacity: 0.5,
+          weight: 1.5,
+        };
+      },
+      onEachFeature: function(feature, layer){
+        layer.on({
+          mouseover: function(event) {
+            layer = event.target;
+            layer.setStyle({
+              fillOpacity:0.9,
+
+            });
+          },
+          mouseout: function(event) {
+            layer = event.target;
+            layer.setStyle({
+              fillOpacity: 0.5,
+            });
+          },
+        });
+      },
+    }) 
+    faults.addTo(layers.faults);
+});
+
+
+
 // Realtime Data collected from USGA, all earthquaked registered in the last week 
 var usgs_url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
 
 d3.json(usgs_url, function(response){
   var quakes = response.features;
-  console.log(quakes);
-
-  
-
 
   // geoJSON data provided as feature list of earthquake information 
   for (var i = 0; i < quakes.length; i++) 
@@ -87,7 +122,7 @@ d3.json(usgs_url, function(response){
     var location = quakes[i].geometry.coordinates;
     var magnitud = quakes[i].properties.mag;
     var place = quakes[i].properties.place;
-    var intensity = magnitud*10000;
+    var intensity = magnitud*50000;
     // validity check
     if (location) {  
       var circle = L.circle([location[1], location[0]], {
