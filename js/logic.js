@@ -29,8 +29,9 @@ var myMap = L.map('map', {
   layers: [light, layers.quakes],   // set initial map tile layer 
 });
 
-
-
+var circles = [];
+var earthquakeData = null;
+var circlesLayer = null;
 
 // Overlays that may be toggled on or off
 var overlayMaps = {
@@ -45,12 +46,12 @@ L.control.layers(baseMaps, overlayMaps).addTo(myMap);
 
 // Define color scale for earthquake magnitude value
 var magnitude_color = [
-  '#e5f5e0', // lightest
-  '#fee6ce',
-  '#FF8C00',
-  '#FF6347',
-  '#FF4500',
-  '#FF0000', // red (more intense earthquake magnitude)
+  '#ffffcc',// 0-1
+  '#e5f5e0', // 1- 2
+  '#fee6ce', // 2-3
+  '#FF8C00', //3-4
+  '#FF6347', //4-5
+  '#FF0000', // 5+ red (more intense earthquake magnitude)
 ];
 
 // given a magnitide return the approriate color from the magnitude range
@@ -80,9 +81,6 @@ d3.json(plates_json, function(data) {
       style: function(feature) {
         return {
           color: 'white',
-          // Call the chooseColor function to decide which color to color our neighborhood (color based on borough)
-          //fillColor: 'blue',
-          //fillOpacity: 0.5,
           weight: 1.5,
         };
       },
@@ -111,11 +109,9 @@ d3.json(plates_json, function(data) {
 var usgs_url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
 
 function circle_quakes(){
-  var circles = [];
-  
   d3.json(usgs_url, function(response){
     var quakes = response.features;
-
+    earthquakeData = response.features;
     // geoJSON data provided as feature list of earthquake information 
     for (var i = 0; i < quakes.length; i++) 
     {
@@ -123,7 +119,9 @@ function circle_quakes(){
       var location = quakes[i].geometry.coordinates;
       var magnitud = quakes[i].properties.mag;
       var place = quakes[i].properties.place;
+      var when = new Date(quakes[i].properties.time);
       var intensity = magnitud*10000;
+      
       // validity check
       if (location) {
         circles.push(  
@@ -133,12 +131,12 @@ function circle_quakes(){
             fillColor: setColor(magnitud),
             fillOpacity: 0.75,
             radius: intensity
-          }).bindPopup(place +" mag "+magnitud),
+          }).bindPopup("<h4>" + place +" <hr> magnitde: "+magnitud + " <hr> " + when + "</h4>"),
         )
       }
     }
 
-    var circlesLayer = L.layerGroup(circles);
+    circlesLayer = L.layerGroup(circles);
     circlesLayer.addTo(layers.quakes);
   });
 }
@@ -149,11 +147,11 @@ function circle_quakes(){
 var legend = L.control({ position: "bottomright" });
 legend.onAdd = function() {
   var div = L.DomUtil.create("div", "info legend");
-  var limits = ["0-1","1-2","3-4","4-5","5+"];
+  var limits = ["0-1","1-2","2-3","3-4","4-5","5+"];
   var colors = magnitude_color;
   var labels = [];
 
-  var legendInfo = "<h2>Magnitud</h2>" ;
+  var legendInfo = "<h2>Magnitude</h2>" ;
 
   div.innerHTML = legendInfo;
 
@@ -175,21 +173,48 @@ var myZoom = {
 };
 
 myMap.on('zoomstart', function(e) {
-  console.log("zoom start");
+  //console.log("zoom start");
   myZoom.start = myMap.getZoom();
 });
 
 myMap.on('zoomend', function(e) {
    myZoom.end = myMap.getZoom();
+
   // redraw circle radius to fit the zoom level
-  //  var diff = myZoom.start - myZoom.end;
-  //  if (diff > 0) {
-  //    console.log("GOT A ZOOM difference of ", diff);
-  //      For each circle in layers.quakes.setRadius(layers.quakes.getRadius() * 2);
-  //  } else if (diff < 0) {
-  //     console.log("GOT A ZOOM reset of ", diff);
-  //      For each circle in layers.quakes.setRadius(layers.quakes.getRadius() / 2);
-  //  }
+   var diff = myZoom.start - myZoom.end;
+
+   for (c = 0; c<circles.length; c++) {
+    if (diff > 0) {
+      // console.log("GOT A ZOOM difference of ", diff);
+      //  For each circle in layers.quakes.setRadius(layers.quakes.getRadius() * 2);
+      circles[c].setRadius(circles[c].getRadius()*2);
+    } else if (diff < 0) {
+        //console.log("GOT A ZOOM reset of ", diff);
+        //console.log(c);
+      //  For each circle in layers.quakes.setRadius(layers.quakes.getRadius() / 2);
+      circles[c].setRadius(circles[c].getRadius()/2);
+    }
+  }
 });
 
 circle_quakes();
+
+// var timelineLayer = L.timeline(earthquakeData, {
+//   getInterval: function(feature) {
+//       return {
+//           start: feature.properties.time,
+//           end: feature.properties.time + feature.properties.mag * 10000000
+//       };
+//   },
+//   pointToLayer: layers.quakes,
+//   //onEachFeature: onEachEarthquake
+// });
+
+// var timelineControl = L.timelineSliderControl({
+//   formatOutput: function(date) {
+//       return new Date(date).toString();
+//   }
+// });
+// timelineControl.addTo(myMap);
+// timelineControl.addTimelines(timelineLayer);
+// timelineLayer.addTo(myMap);
