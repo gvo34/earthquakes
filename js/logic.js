@@ -25,7 +25,7 @@ var layers = {
 // Create map object and set default layers
 var myMap = L.map('map', {
   center: [37.7749, -122.4194],
-  zoom: 3,
+  zoom: 6,
   layers: [light, layers.quakes],   // set initial map tile layer 
 });
 
@@ -107,36 +107,41 @@ d3.json(plates_json, function(data) {
     faults.addTo(layers.faults);
 });
 
-
-
 // Realtime Data collected from USGA, all earthquaked registered in the last week 
 var usgs_url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
 
-d3.json(usgs_url, function(response){
-  var quakes = response.features;
+function circle_quakes(){
+  var circles = [];
+  
+  d3.json(usgs_url, function(response){
+    var quakes = response.features;
 
-  // geoJSON data provided as feature list of earthquake information 
-  for (var i = 0; i < quakes.length; i++) 
-  {
-    // decode the geoJSON data 
-    var location = quakes[i].geometry.coordinates;
-    var magnitud = quakes[i].properties.mag;
-    var place = quakes[i].properties.place;
-    var intensity = magnitud*50000;
-    // validity check
-    if (location) {  
-      var circle = L.circle([location[1], location[0]], {
-        color: '#bdbdbd',
-        fillColor: setColor(magnitud),
-        fillOpacity: 0.75,
-        radius: intensity
-      });
-
-      circle.addTo(layers.quakes);
-      circle.bindPopup(place +" mag "+magnitud);
+    // geoJSON data provided as feature list of earthquake information 
+    for (var i = 0; i < quakes.length; i++) 
+    {
+      // decode the geoJSON data 
+      var location = quakes[i].geometry.coordinates;
+      var magnitud = quakes[i].properties.mag;
+      var place = quakes[i].properties.place;
+      var intensity = magnitud*10000;
+      // validity check
+      if (location) {
+        circles.push(  
+            L.circle([location[1], location[0]], {
+            color: '#bdbdbd',
+            weight: 1,
+            fillColor: setColor(magnitud),
+            fillOpacity: 0.75,
+            radius: intensity
+          }).bindPopup(place +" mag "+magnitud),
+        )
+      }
     }
-  }
-});
+
+    var circlesLayer = L.layerGroup(circles);
+    circlesLayer.addTo(layers.quakes);
+  });
+}
 
 
 
@@ -148,18 +153,14 @@ legend.onAdd = function() {
   var colors = magnitude_color;
   var labels = [];
 
-  // Add min & max
-  var legendInfo = "<h1>Magnitude</h1>" +
-    "<div class=\"labels\">" +
-      "<div class=\"min\">" + limits[0] + "</div>" +
-      "<div class=\"max\">" + limits[4] + "</div>" +
-    "</div>";
+  var legendInfo = "<h2>Magnitud</h2>" ;
 
   div.innerHTML = legendInfo;
 
   limits.forEach(function(limit, index) {
-    labels.push("<li style=\"background-color: " + colors[index] + "\"></li>");
+    labels.push("<li style=\"background-color: " + colors[index] + "\">           " + limits[index]+"</li>");
   });
+
 
   div.innerHTML += "<ul>" + labels.join("") + "</ul>";
   return div;
@@ -167,3 +168,28 @@ legend.onAdd = function() {
 
 // Adding legend to the map
 legend.addTo(myMap);
+
+var myZoom = {
+  start:  myMap.getZoom(),
+  end: myMap.getZoom()
+};
+
+myMap.on('zoomstart', function(e) {
+  console.log("zoom start");
+  myZoom.start = myMap.getZoom();
+});
+
+myMap.on('zoomend', function(e) {
+   myZoom.end = myMap.getZoom();
+  // redraw circle radius to fit the zoom level
+  //  var diff = myZoom.start - myZoom.end;
+  //  if (diff > 0) {
+  //    console.log("GOT A ZOOM difference of ", diff);
+  //      For each circle in layers.quakes.setRadius(layers.quakes.getRadius() * 2);
+  //  } else if (diff < 0) {
+  //     console.log("GOT A ZOOM reset of ", diff);
+  //      For each circle in layers.quakes.setRadius(layers.quakes.getRadius() / 2);
+  //  }
+});
+
+circle_quakes();

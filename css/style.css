@@ -10,7 +10,7 @@ html {
 }
 
 
-/* CSS from the Leaflet-Choropleth documentation */
+/* CSS for legend */
 .legend {
   padding: 6px 8px;
   font: 12px Arial, Helvetica, sans-serif;
@@ -30,20 +30,13 @@ html {
 }
 
 .legend li {
-  display: inline-block;
   width: 30px;
   height: 22px;
+  white-space: pre;
+  text-align:center;
 }
 
-.legend .min {
-  float: left;
-  padding-bottom: 5px;
-}
 
-.legend .max {
-  float: right;
-}
-
-h1 {
+h2 {
   text-align: center;
 }
